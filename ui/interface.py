@@ -3,10 +3,11 @@ from tkinter import filedialog, messagebox, ttk
 import os
 import shutil
 import threading
-from utils.helpers import find_unified_models, check_dependencies
+from utils.helpers import find_unified_models, get_bin_path
 from core.extractor import Extractor
 from core.patcher import Patcher
 from core.packager import Packager
+from core.downloader import Downloader
 
 class MainApp:
     def __init__(self):
@@ -114,7 +115,8 @@ class MainApp:
     def _conversion_thread(self):
         try:
             self._update_status("Checking dependencies...", 5)
-            check_dependencies()
+            downloader = Downloader(get_bin_path())
+            downloader.check_dependencies()
 
             work_dir = "work"
             if os.path.exists(work_dir): shutil.rmtree(work_dir)

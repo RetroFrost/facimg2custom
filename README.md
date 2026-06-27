@@ -37,7 +37,7 @@ Whether you're working with a modern device using dynamic partitions or a legacy
 
 2. **Run the tool**:
    ```bash
-   python main.py
+   python launcher.py
    ```
 
 3. **Follow the interactive prompts**:

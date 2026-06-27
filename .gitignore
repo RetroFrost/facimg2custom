@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+*$py.class
+bin/
+work/
+pixel_port.zip
+.venv/
+venv/
+ENV/
+env/
+.env
+.pytest_cache/
+.vscode/
+.idea/
