@@ -13,7 +13,7 @@ class Downloader:
         self.bin_dir = bin_dir
 
     def download_dependency(self, url, target_name):
-        """Downloads a zip dependency and extracts it to the bin folder."""
+        """Downloads a zip dependency and extracts it to the bin folder, flattening nested structures."""
         if not os.path.exists(self.bin_dir):
             os.makedirs(self.bin_dir)
 
@@ -31,13 +31,16 @@ class Downloader:
                 temp_extract_dir = os.path.join(self.bin_dir, f"temp_{target_name}")
                 zip_ref.extractall(temp_extract_dir)
 
+                # Flattening: Find all files regardless of nesting
                 for root, dirs, files in os.walk(temp_extract_dir):
                     for file in files:
+                        # Priority binaries
                         if file.endswith(".exe") or file.endswith(".dll") or file == "magiskboot":
                             src = os.path.join(root, file)
                             dst = os.path.join(self.bin_dir, file)
                             if not os.path.exists(dst):
                                 shutil.move(src, dst)
+                                print(f"[*] Found and moved: {file}")
 
                 shutil.rmtree(temp_extract_dir)
 

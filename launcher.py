@@ -12,7 +12,6 @@ def check_and_install_deps():
             subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
         except Exception as e:
             print(f"[!] Could not install 'requests': {e}")
-            print("[!] Please run: pip install requests")
             return False
     return True
 
@@ -23,8 +22,14 @@ def main():
     if not check_and_install_deps():
         sys.exit(1)
 
-    # Import UI after ensuring dependencies are met
+    from core.updater import Updater
     from ui.interface import MainApp
+
+    # Check for updates and perform if available
+    updater = Updater()
+    if updater.check_for_updates():
+        # updater.perform_update() # Commented for safety during development, but logic is hooked
+        pass
 
     # Initialize the UI
     try:
