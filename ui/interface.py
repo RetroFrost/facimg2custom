@@ -90,7 +90,8 @@ class MainApp:
         if filename: self.pixel_img_path.set(filename)
 
     def _browse_samsung_ap(self):
-        filename = filedialog.askopenfilename(filetypes=[("Tar files", "*.tar *.tar.md5"), ("All files", "*.*")])
+        # Correctly format the filetypes for Windows dialog
+        filename = filedialog.askopenfilename(filetypes=[("Samsung AP", "*.tar *.tar.md5"), ("Tar files", "*.tar"), ("MD5 files", "*.tar.md5"), ("All files", "*.*")])
         if filename: self.samsung_ap_path.set(filename)
 
     def _browse_device_tree(self):

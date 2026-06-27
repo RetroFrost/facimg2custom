@@ -62,12 +62,29 @@ class Extractor:
             with tarfile.open(ap_path, 'r') as tar:
                 tar.extractall(extract_path)
         except Exception as e:
-            print(f"[!] Tar extraction failed: {e}. Trying alternative method...")
-            # Fallback for some corrupted/weirdly padded tars
-            if platform.system() != "Windows":
-                 subprocess.run(["tar", "-xf", ap_path, "-C", extract_path])
-            else:
-                raise e
+            print(f"[!] Tar extraction failed: {e}. Trying alternative method (truncating MD5 footer)...")
+            try:
+                # MD5 footer is usually 16-52 bytes at the end. We try to read it as a raw tar.
+                # If tarfile fails, it might be due to trailing garbage.
+                with open(ap_path, 'rb') as f:
+                    data = f.read()
+                # Find the last block of zeros (tar end-of-archive marker is 1024 zeros)
+                last_zero = data.rfind(b'\x00' * 1024)
+                if last_zero != -1:
+                    truncated_path = ap_path + ".tmp.tar"
+                    with open(truncated_path, 'wb') as f:
+                        f.write(data[:last_zero + 1024])
+                    with tarfile.open(truncated_path, 'r') as tar:
+                        tar.extractall(extract_path)
+                    os.remove(truncated_path)
+                else:
+                    raise e
+            except:
+                # Final fallback for Unix systems
+                if platform.system() != "Windows":
+                     subprocess.run(["tar", "-xf", ap_path, "-C", extract_path])
+                else:
+                    raise Exception(f"Failed to extract {ap_path}. Ensure it is a valid Samsung AP tar.")
 
         # 1. Decompress all .lz4 files
         for file in os.listdir(extract_path):
