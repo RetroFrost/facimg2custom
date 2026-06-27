@@ -1,5 +1,6 @@
 import os
 import zipfile
+import tarfile
 import shutil
 import subprocess
 import platform
@@ -14,7 +15,6 @@ class Extractor:
 
     def extract_main_zip(self):
         """Unzips the main factory image and finds the nested image zip."""
-        """Unzips the main factory image to find the nested image zip."""
         print(f"[*] Extracting main Pixel zip: {self.pixel_zip}")
         if not os.path.exists(self.extracted_path):
             os.makedirs(self.extracted_path)
@@ -28,13 +28,6 @@ class Extractor:
                     self.nested_zip_path = os.path.join(root, file)
                     print(f"[*] Found nested image zip: {file}")
                     return self.nested_zip_path
-
-        raise Exception("Nested image zip not found in factory image!")
-        # Find the nested image zip (usually starts with 'image-')
-        for file in os.listdir(self.extracted_path):
-            if file.startswith("image-") and file.endswith(".zip"):
-                self.nested_zip_path = os.path.join(self.extracted_path, file)
-                break
 
         raise Exception("Nested image zip not found in factory image!")
 
@@ -57,6 +50,45 @@ class Extractor:
 
         return img_extract_path
 
+    def extract_samsung_ap(self, ap_tar_path):
+        """Extracts a Samsung AP .tar file and handles .lz4 compressed images."""
+        extract_path = os.path.join(self.output_dir, "extracted_ap")
+        print(f"[*] Extracting Samsung AP tar: {ap_tar_path}")
+        if not os.path.exists(extract_path):
+            os.makedirs(extract_path)
+
+        with tarfile.open(ap_tar_path, 'r') as tar:
+            tar.extractall(extract_path)
+
+        # Check for .lz4 files and decompress if possible
+        for file in os.listdir(extract_path):
+            if file.endswith(".lz4"):
+                self._decompress_lz4(os.path.join(extract_path, file))
+
+        return extract_path
+
+    def _decompress_lz4(self, lz4_path):
+        """Attempts to decompress lz4 file using downloaded lz4 binary."""
+        bin_dir = get_bin_path()
+        binary_name = "lz4.exe" if platform.system() == "Windows" else "lz4"
+        lz4_bin = os.path.join(bin_dir, binary_name)
+
+        out_path = lz4_path.replace(".lz4", "")
+        print(f"[*] Decompressing {lz4_path}...")
+
+        try:
+            cmd = [lz4_bin, "-d", lz4_path, out_path]
+            subprocess.run(cmd, check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
+            os.remove(lz4_path)
+        except Exception as e:
+            print(f"[!] Decompression failed for {lz4_path}: {e}")
+            # Fallback to system lz4 if local bin failed
+            try:
+                subprocess.run(["lz4", "-d", lz4_path, out_path], check=True)
+                os.remove(lz4_path)
+            except:
+                print(f"[!] Could not decompress {lz4_path}. Ensure lz4 is available.")
+
     def convert_sparse_images(self, img_dir):
         """Converts sparse Android images to raw if necessary."""
         bin_dir = get_bin_path()
@@ -71,13 +103,6 @@ class Extractor:
                 input_img = os.path.join(img_dir, file)
                 output_img = os.path.join(img_dir, f"raw_{file}")
 
-                try:
-                    subprocess.run([simg2img, input_img, output_img], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
-                    os.remove(input_img)
-                    os.rename(output_img, input_img)
-                except:
-                    pass
-                print(f"[*] Checking/Converting sparse image: {file}")
                 try:
                     subprocess.run([simg2img, input_img, output_img], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
                     os.remove(input_img)

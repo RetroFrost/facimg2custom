@@ -13,7 +13,7 @@ class MainApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("facimg2custom - Pixel to Custom ROM Converter")
-        self.root.geometry("700x650")
+        self.root.geometry("700x700")
 
         self.pixel_img_path = tk.StringVar()
         self.device_tree_path = tk.StringVar()
@@ -35,9 +35,12 @@ class MainApp:
         ttk.Entry(main_frame, textvariable=self.pixel_img_path, width=60).grid(row=2, column=0, sticky=tk.W)
         ttk.Button(main_frame, text="Browse", command=self._browse_pixel_img).grid(row=2, column=1, padx=5)
 
-        ttk.Label(main_frame, text="Device Tree Folder:").grid(row=3, column=0, sticky=tk.W, pady=(10, 0))
+        ttk.Label(main_frame, text="Device Tree Folder or Samsung AP (.tar):").grid(row=3, column=0, sticky=tk.W, pady=(10, 0))
         ttk.Entry(main_frame, textvariable=self.device_tree_path, width=60).grid(row=4, column=0, sticky=tk.W)
-        ttk.Button(main_frame, text="Browse", command=self._browse_device_tree).grid(row=4, column=1, padx=5)
+        tree_btn_frame = ttk.Frame(main_frame)
+        tree_btn_frame.grid(row=4, column=1, padx=5)
+        ttk.Button(tree_btn_frame, text="Folder", command=self._browse_device_tree).pack(side=tk.LEFT)
+        ttk.Button(tree_btn_frame, text="File", command=self._browse_device_file).pack(side=tk.LEFT, padx=2)
 
         self.model_label = ttk.Label(main_frame, text="Target Model (Unified Tree):")
         self.model_combo = ttk.Combobox(main_frame, textvariable=self.selected_model, state="readonly", width=57)
@@ -74,6 +77,14 @@ class MainApp:
     def _browse_pixel_img(self):
         filename = filedialog.askopenfilename(filetypes=[("Zip files", "*.zip")])
         if filename: self.pixel_img_path.set(filename)
+
+    def _browse_device_file(self):
+        filename = filedialog.askopenfilename(filetypes=[("Tar files", "*.tar"), ("All files", "*.*")])
+        if filename:
+            self.device_tree_path.set(filename)
+            self.model_label.grid_forget()
+            self.model_combo.grid_forget()
+            self.selected_model.set("")
 
     def _browse_device_tree(self):
         directory = filedialog.askdirectory()
@@ -124,17 +135,29 @@ class MainApp:
             if os.path.exists(work_dir): shutil.rmtree(work_dir, ignore_errors=True)
             os.makedirs(work_dir, exist_ok=True)
 
-            # Step 1: Extract
+            # Step 1: Extract Pixel
             self._update_status("Extracting Pixel Image...", 10)
             ext = Extractor(self.pixel_img_path.get(), work_dir)
-            nested_zip = ext.extract_main_zip()
+            ext.extract_main_zip()
             self._update_status("Extracting partitions...", 30)
             img_dir = ext.extract_nested_zip()
             ext.convert_sparse_images(img_dir)
 
+            # Step 1.1: Extract Samsung Base if provided
+            base_dir = None
+            if self.device_tree_path.get().endswith(".tar"):
+                self._update_status("Extracting Samsung Base (AP)...", 45)
+                base_dir = ext.extract_samsung_ap(self.device_tree_path.get())
+
             # Step 2: Patch
             self._update_status("Applying smart patches...", 60)
-            patcher = Patcher(img_dir, self.device_tree_path.get(), self.selected_model.get())
+            is_tar = self.device_tree_path.get().endswith(".tar")
+            patcher = Patcher(
+                img_dir,
+                None if is_tar else self.device_tree_path.get(),
+                self.selected_model.get(),
+                base_img_dir=base_dir
+            )
             working_dir = patcher.apply_smart_patches()
             patcher.generate_updater_script(self.flash_text.get(), self.update_binary_type.get())
 
