@@ -23,6 +23,15 @@ def main():
     if not check_and_install_deps():
         sys.exit(1)
 
+    from core.updater import Updater
+    from ui.interface import MainApp
+
+    # Check for updates and perform if available
+    updater = Updater()
+    if updater.check_for_updates():
+        # updater.perform_update() # Commented for safety during development, but logic is hooked
+        pass
+
     # Import UI after ensuring dependencies are met
     from ui.interface import MainApp
 
