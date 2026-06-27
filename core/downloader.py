@@ -14,13 +14,14 @@ class Downloader:
 
     def download_dependency(self, url, target_name):
         """Downloads a zip dependency and extracts it to the bin folder, flattening nested structures."""
-        """Downloads a zip dependency and extracts it to the bin folder."""
         if not os.path.exists(self.bin_dir):
             os.makedirs(self.bin_dir)
 
         print(f"[*] Downloading {target_name} from {url}...")
         try:
-            response = requests.get(url, stream=True)
+            response = requests.get(url, stream=True, timeout=15)
+            response.raise_for_status()
+
             zip_path = os.path.join(self.bin_dir, f"{target_name}.zip")
 
             with open(zip_path, 'wb') as f:
@@ -30,12 +31,11 @@ class Downloader:
             print(f"[*] Extracting {target_name}...")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 temp_extract_dir = os.path.join(self.bin_dir, f"temp_{target_name}")
+                if os.path.exists(temp_extract_dir): shutil.rmtree(temp_extract_dir)
                 zip_ref.extractall(temp_extract_dir)
 
                 # Flattening: Find all files regardless of nesting
-                for root, dirs, files in os.walk(temp_extract_dir):
-                    for file in files:
-                        # Priority binaries
+                found_any = False
                 for root, dirs, files in os.walk(temp_extract_dir):
                     for file in files:
                         if file.endswith(".exe") or file.endswith(".dll") or file == "magiskboot":
@@ -44,8 +44,11 @@ class Downloader:
                             if not os.path.exists(dst):
                                 shutil.move(src, dst)
                                 print(f"[*] Found and moved: {file}")
+                                found_any = True
 
                 shutil.rmtree(temp_extract_dir)
+                if not found_any:
+                    print(f"[!] Warning: No relevant binaries found in {target_name} zip.")
 
             os.remove(zip_path)
             return True

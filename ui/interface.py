@@ -103,6 +103,7 @@ class MainApp:
         if progress is not None:
             self.progress_var.set(progress)
         self.root.update_idletasks()
+        print(f"[UI Status] {text}")
 
     def _run_process(self):
         if not self.pixel_img_path.get() or not self.device_tree_path.get():
@@ -116,11 +117,12 @@ class MainApp:
         try:
             self._update_status("Checking dependencies...", 5)
             downloader = Downloader(get_bin_path())
-            downloader.check_dependencies()
+            if not downloader.check_dependencies():
+                raise Exception("Dependency check failed. Check console for details.")
 
             work_dir = "work"
-            if os.path.exists(work_dir): shutil.rmtree(work_dir)
-            os.makedirs(work_dir)
+            if os.path.exists(work_dir): shutil.rmtree(work_dir, ignore_errors=True)
+            os.makedirs(work_dir, exist_ok=True)
 
             # Step 1: Extract
             self._update_status("Extracting Pixel Image...", 10)
@@ -140,6 +142,7 @@ class MainApp:
             self._update_status("Packaging final ZIP...", 90)
             pkg = Packager(working_dir, self.post_flash_files)
             final_zip = os.path.join(os.getcwd(), "pixel_port.zip")
+            if os.path.exists(final_zip): os.remove(final_zip)
             pkg.create_zip(final_zip)
 
             self._update_status("Done!", 100)
