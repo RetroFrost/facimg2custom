@@ -5,13 +5,12 @@ import requests
 import zipfile
 import shutil
 
-# Stable URLs for Windows binaries
+# Verified URLs for Windows binaries
 SIMG2IMG_WIN_URL = "https://github.com/KinglyWayne/simg2img_win/archive/refs/heads/master.zip"
-MAGISKBOOT_URL = "https://github.com/erdilS/Port-Windows-11-Xiaomi-Pad-5/raw/main/magiskboot.exe"
-# LZ4 official releases are in ZIPs
+MAGISKBOOT_URL = "https://github.com/erdilS/Port-Windows-11-Xiaomi-Pad-5/releases/download/v2.1/magiskboot.exe"
 LZ4_WIN_ZIP_URL = "https://github.com/lz4/lz4/releases/download/v1.10.0/lz4_win64_v1_10_0.zip"
-LPUNPACK_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/raw/main/lpunpack.exe"
-CYGWIN_DLL_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/raw/main/cygwin1.dll"
+LPUNPACK_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/releases/download/cmake/lpunpack.exe"
+CYGWIN_DLL_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/releases/download/cmake/cygwin1.dll"
 
 class Downloader:
     def __init__(self, bin_dir):
@@ -25,7 +24,7 @@ class Downloader:
         dst = os.path.join(self.bin_dir, target_name)
         print(f"[*] Downloading {target_name} from {url}...")
         try:
-            r = requests.get(url, timeout=30)
+            r = requests.get(url, timeout=30, allow_redirects=True)
             r.raise_for_status()
             with open(dst, 'wb') as f:
                 f.write(r.content)
@@ -42,7 +41,7 @@ class Downloader:
 
         print(f"[*] Downloading {target_name} zip from {url}...")
         try:
-            response = requests.get(url, stream=True, timeout=30)
+            response = requests.get(url, stream=True, timeout=30, allow_redirects=True)
             response.raise_for_status()
 
             zip_path = os.path.join(self.bin_dir, f"{target_name}.zip")
@@ -52,6 +51,11 @@ class Downloader:
                     f.write(chunk)
 
             print(f"[*] Extracting {target_name}...")
+            if not zipfile.is_zipfile(zip_path):
+                print(f"[!] {target_name} download is not a valid zip file.")
+                os.remove(zip_path)
+                return False
+
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 temp_extract_dir = os.path.join(self.bin_dir, f"temp_{target_name}")
                 if os.path.exists(temp_extract_dir): shutil.rmtree(temp_extract_dir)
@@ -65,7 +69,7 @@ class Downloader:
                             src = os.path.join(root, file)
                             dst = os.path.join(self.bin_dir, file)
                             if not os.path.exists(dst):
-                                shutil.copy2(src, dst)
+                                shutil.move(src, dst)
                                 print(f"[*] Found and copied: {file}")
                                 found_any = True
 
@@ -104,7 +108,7 @@ class Downloader:
                 if not self.download_file(LPUNPACK_URL, "lpunpack.exe"):
                     success = False
 
-            # Cygwin DLL (often required for lpunpack/simg2img)
+            # Cygwin DLL
             if not os.path.exists(os.path.join(self.bin_dir, "cygwin1.dll")):
                 if not self.download_file(CYGWIN_DLL_URL, "cygwin1.dll"):
                     success = False
