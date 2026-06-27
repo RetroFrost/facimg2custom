@@ -50,20 +50,34 @@ class Extractor:
 
         return img_extract_path
 
-    def extract_samsung_ap(self, ap_tar_path):
-        """Extracts a Samsung AP .tar file and handles .lz4 compressed images."""
+    def extract_samsung_ap(self, ap_path):
+        """Extracts a Samsung AP (.tar or .tar.md5) file and handles .lz4 and super.img."""
         extract_path = os.path.join(self.output_dir, "extracted_ap")
-        print(f"[*] Extracting Samsung AP tar: {ap_tar_path}")
+        print(f"[*] Extracting Samsung AP: {ap_path}")
         if not os.path.exists(extract_path):
             os.makedirs(extract_path)
 
-        with tarfile.open(ap_tar_path, 'r') as tar:
-            tar.extractall(extract_path)
+        # Ignore .md5 footer by opening as a normal tar
+        try:
+            with tarfile.open(ap_path, 'r') as tar:
+                tar.extractall(extract_path)
+        except Exception as e:
+            print(f"[!] Tar extraction failed: {e}. Trying alternative method...")
+            # Fallback for some corrupted/weirdly padded tars
+            if platform.system() != "Windows":
+                 subprocess.run(["tar", "-xf", ap_path, "-C", extract_path])
+            else:
+                raise e
 
-        # Check for .lz4 files and decompress if possible
+        # 1. Decompress all .lz4 files
         for file in os.listdir(extract_path):
             if file.endswith(".lz4"):
                 self._decompress_lz4(os.path.join(extract_path, file))
+
+        # 2. Handle super.img if it exists (Dynamic Partitions)
+        super_path = os.path.join(extract_path, "super.img")
+        if os.path.exists(super_path):
+            self._unpack_super(super_path, extract_path)
 
         return extract_path
 
@@ -82,12 +96,24 @@ class Extractor:
             os.remove(lz4_path)
         except Exception as e:
             print(f"[!] Decompression failed for {lz4_path}: {e}")
-            # Fallback to system lz4 if local bin failed
-            try:
-                subprocess.run(["lz4", "-d", lz4_path, out_path], check=True)
-                os.remove(lz4_path)
-            except:
-                print(f"[!] Could not decompress {lz4_path}. Ensure lz4 is available.")
+
+    def _unpack_super(self, super_path, output_dir):
+        """Unpacks Samsung super.img to get vendor, system, odm, prism, etc."""
+        bin_dir = get_bin_path()
+        binary_name = "lpunpack.exe" if platform.system() == "Windows" else "lpunpack"
+        lpunpack_bin = os.path.join(bin_dir, binary_name)
+
+        if not os.path.exists(lpunpack_bin):
+            print("[!] lpunpack not found. Skipping super.img unpacking.")
+            return
+
+        print(f"[*] Unpacking super.img into {output_dir}...")
+        try:
+            # lpunpack <super_path> <output_dir>
+            subprocess.run([lpunpack_bin, super_path, output_dir], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
+            print("[*] super.img unpacked successfully.")
+        except Exception as e:
+            print(f"[!] Failed to unpack super.img: {e}")
 
     def convert_sparse_images(self, img_dir):
         """Converts sparse Android images to raw if necessary."""
