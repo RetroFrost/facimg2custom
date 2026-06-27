@@ -3,6 +3,7 @@ from tkinter import filedialog, messagebox, ttk
 import os
 import shutil
 import threading
+import queue
 from utils.helpers import find_unified_models, get_bin_path
 from core.extractor import Extractor
 from core.patcher import Patcher
@@ -24,7 +25,9 @@ class MainApp:
         self.use_blank_vbmeta = tk.BooleanVar(value=True)
         self.post_flash_files = []
 
+        self.msg_queue = queue.Queue()
         self._setup_ui()
+        self._check_queue()
 
     def _setup_ui(self):
         main_frame = ttk.Frame(self.root, padding="20")
@@ -90,7 +93,6 @@ class MainApp:
         if filename: self.pixel_img_path.set(filename)
 
     def _browse_samsung_ap(self):
-        # Correctly format the filetypes for Windows dialog
         filename = filedialog.askopenfilename(filetypes=[("Samsung AP", "*.tar *.tar.md5"), ("Tar files", "*.tar"), ("MD5 files", "*.tar.md5"), ("All files", "*.*")])
         if filename: self.samsung_ap_path.set(filename)
 
@@ -118,12 +120,28 @@ class MainApp:
                     self.post_flash_listbox.insert(tk.END, os.path.basename(f))
 
     def _update_status(self, text, progress=None):
-        self.status_label.config(text=text)
-        if progress is not None:
-            self.progress_var.set(progress)
-            self.percent_label.config(text=f"{int(progress)}%")
-        self.root.update_idletasks()
-        print(f"[UI Status] {text} ({int(progress) if progress is not None else ''}%)")
+        self.msg_queue.put(("status", (text, progress)))
+        print(f"[UI Log] {text} ({int(progress) if progress is not None else ''}%)")
+
+    def _check_queue(self):
+        while True:
+            try:
+                msg_type, data = self.msg_queue.get_nowait()
+                if msg_type == "status":
+                    text, progress = data
+                    self.status_label.config(text=text)
+                    if progress is not None:
+                        self.progress_var.set(progress)
+                        self.percent_label.config(text=f"{int(progress)}%")
+                elif msg_type == "done":
+                    messagebox.showinfo("Success", f"Conversion complete!\nOutput: {data}")
+                    self.start_btn.config(state=tk.NORMAL)
+                elif msg_type == "error":
+                    messagebox.showerror("Process Error", str(data))
+                    self.start_btn.config(state=tk.NORMAL)
+            except queue.Empty:
+                break
+        self.root.after(100, self._check_queue)
 
     def _run_process(self):
         if not self.pixel_img_path.get() or (not self.device_tree_path.get() and not self.samsung_ap_path.get()):
@@ -177,12 +195,10 @@ class MainApp:
             pkg.create_zip(final_zip)
 
             self._update_status("Done!", 100)
-            messagebox.showinfo("Success", f"Conversion complete!\nOutput: {final_zip}")
+            self.msg_queue.put(("done", final_zip))
         except Exception as e:
             self._update_status(f"Error: {str(e)}", 0)
-            messagebox.showerror("Process Error", str(e))
-        finally:
-            self.start_btn.config(state=tk.NORMAL)
+            self.msg_queue.put(("error", str(e)))
 
     def run(self):
         self.root.mainloop()

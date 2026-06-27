@@ -62,25 +62,43 @@ class Extractor:
             with tarfile.open(ap_path, 'r') as tar:
                 tar.extractall(extract_path)
         except Exception as e:
-            print(f"[!] Tar extraction failed: {e}. Trying alternative method (truncating MD5 footer)...")
+            print(f"[!] Tar extraction failed: {e}. Trying truncation method...")
             try:
-                # MD5 footer is usually 16-52 bytes at the end. We try to read it as a raw tar.
-                # If tarfile fails, it might be due to trailing garbage.
+                # Find the end of archive marker without loading the whole file
+                # Tar archives end with two 512-byte blocks of zeros.
+                file_size = os.path.getsize(ap_path)
                 with open(ap_path, 'rb') as f:
-                    data = f.read()
-                # Find the last block of zeros (tar end-of-archive marker is 1024 zeros)
-                last_zero = data.rfind(b'\x00' * 1024)
-                if last_zero != -1:
-                    truncated_path = ap_path + ".tmp.tar"
-                    with open(truncated_path, 'wb') as f:
-                        f.write(data[:last_zero + 1024])
-                    with tarfile.open(truncated_path, 'r') as tar:
-                        tar.extractall(extract_path)
-                    os.remove(truncated_path)
-                else:
-                    raise e
-            except:
-                # Final fallback for Unix systems
+                    # Scan backwards for the first non-zero byte before the end of the file
+                    # To be safe, we just try to find the last 1024 bytes of zeros.
+                    # We'll read in chunks from the end.
+                    chunk_size = 1024 * 1024
+                    pos = file_size
+                    found_tail = False
+                    while pos > 0:
+                        pos = max(0, pos - chunk_size)
+                        f.seek(pos)
+                        data = f.read(chunk_size + 1024)
+                        last_zero = data.rfind(b'\x00' * 1024)
+                        if last_zero != -1:
+                            # Found the marker
+                            actual_end = pos + last_zero + 1024
+                            truncated_path = ap_path + ".tmp.tar"
+                            with open(truncated_path, 'wb') as f_out:
+                                f.seek(0)
+                                copied = 0
+                                while copied < actual_end:
+                                    to_read = min(8192, actual_end - copied)
+                                    f_out.write(f.read(to_read))
+                                    copied += to_read
+
+                            with tarfile.open(truncated_path, 'r') as tar:
+                                tar.extractall(extract_path)
+                            os.remove(truncated_path)
+                            found_tail = True
+                            break
+                    if not found_tail: raise e
+            except Exception as e2:
+                print(f"[!] Truncation failed: {e2}")
                 if platform.system() != "Windows":
                      subprocess.run(["tar", "-xf", ap_path, "-C", extract_path])
                 else:
@@ -126,7 +144,6 @@ class Extractor:
 
         print(f"[*] Unpacking super.img into {output_dir}...")
         try:
-            # lpunpack <super_path> <output_dir>
             subprocess.run([lpunpack_bin, super_path, output_dir], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
             print("[*] super.img unpacked successfully.")
         except Exception as e:

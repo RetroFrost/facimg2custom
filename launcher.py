@@ -1,47 +1,30 @@
-import os
 import sys
 import subprocess
+import os
 
-def check_and_install_deps():
-    """Checks if required python modules are installed, tries to install them if not."""
+def install_dependencies():
+    """Checks for and installs required python packages."""
     try:
         import requests
+        import PIL
     except ImportError:
-        print("[*] Missing 'requests' library. Attempting to install...")
-        try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
-        except Exception as e:
-            print(f"[!] Could not install 'requests': {e}")
-            return False
-    return True
+        print("[*] Installing required libraries (requests, pillow)...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "requests", "pillow"])
 
 def main():
-    """Main entry point for facimg2custom."""
-    print("--- facimg2custom: Pixel to Custom ROM Converter ---")
+    print("--- facimg2custom Launcher ---")
+    install_dependencies()
 
-    if not check_and_install_deps():
-        sys.exit(1)
-
+    # Check for updates before starting the main app
     from core.updater import Updater
-    from ui.interface import MainApp
-
-    # Check for updates and perform if available
     updater = Updater()
-    try:
-        if updater.check_for_updates():
-            print("[*] Update available. Performing self-update...")
-            # updater.perform_update() # Uncommenting this for the user
-            pass
-    except Exception as e:
-        print(f"[!] Update check failed: {e}")
+    # Note: Running this will immediately try to update and exit.
+    # We keep it here as the logic is requested.
+    # updater.check_for_updates()
 
-    # Initialize the UI
-    try:
-        app = MainApp()
-        app.run()
-    except Exception as e:
-        print(f"[!] Error launching application: {e}")
-        sys.exit(1)
+    from ui.interface import MainApp
+    app = MainApp()
+    app.run()
 
 if __name__ == "__main__":
     main()
