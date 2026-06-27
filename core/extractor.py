@@ -14,6 +14,7 @@ class Extractor:
 
     def extract_main_zip(self):
         """Unzips the main factory image and finds the nested image zip."""
+        """Unzips the main factory image to find the nested image zip."""
         print(f"[*] Extracting main Pixel zip: {self.pixel_zip}")
         if not os.path.exists(self.extracted_path):
             os.makedirs(self.extracted_path)
@@ -27,6 +28,13 @@ class Extractor:
                     self.nested_zip_path = os.path.join(root, file)
                     print(f"[*] Found nested image zip: {file}")
                     return self.nested_zip_path
+
+        raise Exception("Nested image zip not found in factory image!")
+        # Find the nested image zip (usually starts with 'image-')
+        for file in os.listdir(self.extracted_path):
+            if file.startswith("image-") and file.endswith(".zip"):
+                self.nested_zip_path = os.path.join(self.extracted_path, file)
+                break
 
         raise Exception("Nested image zip not found in factory image!")
 
@@ -63,6 +71,13 @@ class Extractor:
                 input_img = os.path.join(img_dir, file)
                 output_img = os.path.join(img_dir, f"raw_{file}")
 
+                try:
+                    subprocess.run([simg2img, input_img, output_img], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
+                    os.remove(input_img)
+                    os.rename(output_img, input_img)
+                except:
+                    pass
+                print(f"[*] Checking/Converting sparse image: {file}")
                 try:
                     subprocess.run([simg2img, input_img, output_img], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
                     os.remove(input_img)

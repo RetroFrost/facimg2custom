@@ -27,6 +27,15 @@ def main():
 
     # Check for updates and perform if available
     updater = Updater()
+    if updater.check_for_updates():
+        # updater.perform_update() # Commented for safety during development, but logic is hooked
+        pass
+
+    # Import UI after ensuring dependencies are met
+    from ui.interface import MainApp
+
+    # Check for updates and perform if available
+    updater = Updater()
     try:
         if updater.check_for_updates():
             print("[*] Update available. Performing self-update...")
