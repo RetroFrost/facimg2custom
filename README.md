@@ -1,6 +1,6 @@
 # facimg2custom
 
-**facimg2custom** is a smart, interactive Python tool designed to simplify the process of porting Google Pixel factory images to other devices. It converts official factory images into flashable custom ROM `.ZIP` files, handling the heavy lifting of stability patches and partition management automatically.
+**facimg2custom** is a smart, interactive Python tool designed to simplify the process of porting Google Pixel factory images to other devices (specifically targeting Samsung). It converts official factory images into flashable custom ROM `.ZIP` files, handling the heavy lifting of stability patches, security HAL adaptation, and partition management automatically.
 
 Whether you're working with a modern device using dynamic partitions or a legacy Samsung device, **facimg2custom** aims to make porting convenient and bug-free for general users.
 
@@ -10,21 +10,27 @@ Whether you're working with a modern device using dynamic partitions or a legacy
 
 - **Smart Porting Logic**: Automatically handles common porting hurdles like `fstab` configurations and partition resizing.
 - **Safe by Design**: Explicitly excludes critical partitions like **Bootloader**, **Radio**, and **Recovery** to prevent permanent bricks. Focuses solely on porting the Pixel system.
-- **Legacy & Modern Support**: Built-in compatibility for Samsung-style legacy partition schemes as well as modern A/B and Dynamic Partition schemes.
+- **Samsung & Legacy Optimization**:
+    - Support for `.tar` and `.tar.md5` Samsung AP files.
+    - Automatic extraction of hardware partitions (`prism`, `odm`, `optics`) from Samsung `super.img`.
+    - **Neutralization Logic**: Automatically disables conflicting Samsung services in `prism` and adapts `fstab` mount flags (`nofail`, `latemount`) to prevent bootloops.
+    - **Security HAL Adaptation**: Prioritizes Samsung-specific Keymaster and Gatekeeper blobs for hardware-backed security.
+- **AVB Disabler**: Option to automatically generate and include a blank `vbmeta.img` to bypass Android Verified Boot.
 - **Unified Tree Support**: Point the tool at a unified device tree, and it will interactively list and let you select the specific model you're targeting (e.g., beyond0lte, beyond1lte, beyond2lte).
 - **Highly Customizable**:
     - **Flash Text**: Personalize the text displayed during the installation process in recovery (obligatory step).
     - **Post-Flash Files**: Easily include additional files or scripts to be executed after the main ROM is flashed.
-    - **Update Binary**: Choose between using a dummy (new) binary or a compiled `update-binary` for maximum compatibility.
-- **Interactive CLI**: No complex configuration files required—the tool guides you through the process step-by-step.
+    - **Update Binary**: Choose between using a dummy (shell script) binary or a compiled `update-binary`.
+- **Graphical User Interface (GUI)**: A clean, intuitive Tkinter interface—no complex command lines required.
 
 ---
 
 ## 🛠️ Requirements
 
-- **Python 3.x**: The core tool is built on Python for cross-platform compatibility (works great on Windows!).
+- **Python 3.12+**: Built on Python for cross-platform compatibility (optimized for Windows).
 - **Pixel Factory Image**: The official `.zip` from Google for the version of Android you wish to port.
-- **Device Tree**: The device-specific configuration (containing `BoardConfig.mk`, `device.mk`, etc.) for your target hardware.
+- **Samsung AP File**: The stock Samsung firmware file (`AP_*.tar.md5`) for your device.
+- **Device Tree (Optional)**: The device-specific configuration (containing `BoardConfig.mk`, `device.mk`, etc.) for advanced patching.
 
 ---
 
@@ -41,16 +47,17 @@ Whether you're working with a modern device using dynamic partitions or a legacy
    python launcher.py
    ```
 
-3. **Follow the interactive prompts**:
-   - Provide the path to your **Pixel Factory Image**.
-   - Provide the path to your **Device Tree** folder.
-   - If a unified tree is detected, select your model from the list (1, 2, 3...).
-   - Customize your `updater-script` flash text.
-   - Choose between a raw script or one with custom flash text.
-   - Select your `update-binary` type.
-   - Add any optional post-flash files.
+3. **Select your files**:
+   - **Pixel Factory Image**: Select the Google ZIP.
+   - **Samsung AP**: Select your firmware `.tar` or `.tar.md5`.
+   - **Device Tree**: (Optional) Select the folder if you have a custom tree.
 
-4. **Flash**: Once the process completes, you'll have a flashable `.zip` ready for your device's recovery.
+4. **Customize**:
+   - Enter your **Flash Text**.
+   - Enable/Disable **Blank VBMeta** (Recommended for Samsung).
+   - Add any **Post-Flash Files**.
+
+5. **Start Conversion**: Click **START CONVERSION** and wait for the "pixel_port.zip" to be generated.
 
 ---
 
@@ -58,26 +65,22 @@ Whether you're working with a modern device using dynamic partitions or a legacy
 
 **facimg2custom** follows a rigorous multi-step process to ensure a stable port:
 
-1.  **Dependency Verification**: Checks for and automatically downloads necessary binaries like `simg2img` and `magiskboot`.
-2.  **Factory Image Extraction**: Unpacks the main Pixel ZIP and the nested `image-*.zip` to access the partition images.
-3.  **Sparse to Raw Conversion**: Uses `simg2img` to convert sparse Android images (`system`, `vendor`, etc.) into raw formats for patching.
-4.  **Device Tree Analysis**: Scans your device tree to detect models (for unified trees) and identifies the correct block device paths for flashing.
-5.  **Smart Patching**: Applies stability fixes, including `fstab` adjustments and partition resizing logic to match your target device's hardware.
-6.  **Installer Generation**: Creates a customized `updater-script` and `update-binary` (shell script or compiled) based on your interactive choices.
-7.  **Final Packaging**: Bundles the patched images, device-specific metadata, and your custom flash files into a final flashable `.zip`.
+1.  **Dependency Verification**: Automatically downloads necessary binaries like `simg2img`, `magiskboot`, `lz4`, and `lpunpack`.
+2.  **Factory Image Extraction**: Unpacks the Pixel ZIP and its nested images.
+3.  **Samsung Extraction**: Unpacks the AP file, decompresses LZ4 images, and unpacks `super.img` to extract hardware-specific partitions.
+4.  **Smart Patching & Neutralization**:
+    - Disables Samsung services in `prism`.
+    - Fixes `fstab` mount points for `prism`, `optics`, and `keyrefuge`.
+    - Generates a blank `vbmeta.img` disabler.
+5.  **Installer Generation**: Creates a customized `updater-script` that flashes partitions in the correct order (Hardware -> Software).
+6.  **Final Packaging**: Bundles everything into a flashable `.zip`.
 
 ---
 
 ## ⚠️ Disclaimer & Status
 
-**Project Status: Work In Progress (WIP)**
+**Project Status: Alpha / Work In Progress (WIP)**
 
-While **facimg2custom** is designed to be "smart" and prevent bricks, Android porting is inherently risky. Always ensure you have a full backup of your data and a way to restore your device to a functional state (like Odin for Samsung or Fastboot for others) before flashing.
+While **facimg2custom** is designed to prevent bricks, Android porting is inherently risky. Always ensure you have a full backup and a way to restore your device (like Odin) before flashing.
 
 *Use this tool at your own risk. The developers are not responsible for any damage to your hardware.*
-
----
-
-## 🤝 Contributing
-
-This is an open-source project! If you have ideas for better stability patches or support for more legacy devices, feel free to open a Pull Request or an Issue.
