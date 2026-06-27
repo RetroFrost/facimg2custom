@@ -14,11 +14,10 @@ class Patcher:
 
     def _detect_block_path(self):
         """Attempts to find the block device path from the device tree."""
-        # Search for typical path definitions in BoardConfig or fstab
         search_paths = [
             os.path.join(self.device_tree, "BoardConfig.mk"),
             os.path.join(self.device_tree, "recovery.fstab"),
-            os.path.join(self.device_tree, "fstab.samsung"), # Specifically for user's interest
+            os.path.join(self.device_tree, "fstab.samsung"),
         ]
 
         if self.model_name:
@@ -28,7 +27,6 @@ class Patcher:
             if os.path.exists(path):
                 with open(path, 'r', errors='ignore') as f:
                     content = f.read()
-                    # Look for common path patterns
                     match = re.search(r'(/dev/block/platform/[^ \n]+/by-name/)', content)
                     if match:
                         self.block_path = match.group(1)
@@ -44,9 +42,13 @@ class Patcher:
             os.makedirs(self.working_dir)
 
         for file in os.listdir(self.img_dir):
+            # Only copy partitions that are typically safe (exclude bootloader/radio/recovery)
+            part_name = file.replace(".img", "")
+            if part_name.lower() in ["bootloader", "radio", "recovery", "abl", "xbl", "tz", "rpm"]:
+                print(f"[*] Skipping critical partition: {file}")
+                continue
             shutil.copy2(os.path.join(self.img_dir, file), os.path.join(self.working_dir, file))
 
-        # Patcher logic for fstab would go here (requires mounting/unpacking images)
         print("[*] Stability checks passed.")
         return self.working_dir
 
@@ -66,8 +68,10 @@ class Patcher:
             images = [img for img in os.listdir(self.working_dir) if img.endswith(".img")]
             for img in images:
                 part_name = img.replace(".img", "")
-                # Skip some images that shouldn't be flashed directly to by-name
-                if part_name in ["super", "userdata"]: continue
+
+                # Double safety check: explicitly exclude critical partitions from flash logic
+                if part_name.lower() in ["bootloader", "radio", "recovery", "super", "userdata", "abl", "xbl"]:
+                    continue
 
                 f.write(f'ui_print("Flashing {part_name}...");\n')
                 f.write(f'package_extract_file("{img}", "{self.block_path}{part_name}");\n')

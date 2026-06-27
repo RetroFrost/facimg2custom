@@ -9,6 +9,7 @@ Whether you're working with a modern device using dynamic partitions or a legacy
 ## 🚀 Features
 
 - **Smart Porting Logic**: Automatically handles common porting hurdles like `fstab` configurations and partition resizing.
+- **Safe by Design**: Explicitly excludes critical partitions like **Bootloader**, **Radio**, and **Recovery** to prevent permanent bricks. Focuses solely on porting the Pixel system.
 - **Legacy & Modern Support**: Built-in compatibility for Samsung-style legacy partition schemes as well as modern A/B and Dynamic Partition schemes.
 - **Unified Tree Support**: Point the tool at a unified device tree, and it will interactively list and let you select the specific model you're targeting (e.g., beyond0lte, beyond1lte, beyond2lte).
 - **Highly Customizable**:
