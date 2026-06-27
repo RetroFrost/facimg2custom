@@ -17,6 +17,8 @@ class Packager:
 
         with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
             # 1. Add images and META-INF (installer)
+        with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
+            # Add all files from working directory (images and META-INF)
             for root, dirs, files in os.walk(self.working_dir):
                 for file in files:
                     full_path = os.path.join(root, file)
@@ -32,5 +34,12 @@ class Packager:
                         target_path = os.path.join("post_flash", os.path.basename(f_path))
                         zip_ref.write(f_path, target_path)
                         print(f"[*] Added post-flash: {target_path}")
+
+            # Add post-flash files if any
+            if self.post_flash_files:
+                os.makedirs(os.path.join(self.working_dir, "post_flash"), exist_ok=True)
+                for f_path in self.post_flash_files:
+                    if os.path.exists(f_path):
+                        zip_ref.write(f_path, os.path.join("post_flash", os.path.basename(f_path)))
 
         return output_zip_path
