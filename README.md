@@ -53,6 +53,20 @@ Whether you're working with a modern device using dynamic partitions or a legacy
 
 ---
 
+## 🛠️ How it Works
+
+**facimg2custom** follows a rigorous multi-step process to ensure a stable port:
+
+1.  **Dependency Verification**: Checks for and automatically downloads necessary binaries like `simg2img` and `magiskboot`.
+2.  **Factory Image Extraction**: Unpacks the main Pixel ZIP and the nested `image-*.zip` to access the partition images.
+3.  **Sparse to Raw Conversion**: Uses `simg2img` to convert sparse Android images (`system`, `vendor`, etc.) into raw formats for patching.
+4.  **Device Tree Analysis**: Scans your device tree to detect models (for unified trees) and identifies the correct block device paths for flashing.
+5.  **Smart Patching**: Applies stability fixes, including `fstab` adjustments and partition resizing logic to match your target device's hardware.
+6.  **Installer Generation**: Creates a customized `updater-script` and `update-binary` (shell script or compiled) based on your interactive choices.
+7.  **Final Packaging**: Bundles the patched images, device-specific metadata, and your custom flash files into a final flashable `.zip`.
+
+---
+
 ## ⚠️ Disclaimer & Status
 
 **Project Status: Work In Progress (WIP)**
