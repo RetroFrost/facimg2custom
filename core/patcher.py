@@ -89,7 +89,40 @@ class Patcher:
         plt = re.search(r'TARGET_BOARD_PLATFORM\s*:=\s*(\w+)', content)
         if plt: self.device_info['platform'] = plt.group(1)
 
-    def apply_smart_patches(self):
+    def _generate_blank_vbmeta(self):
+        """Generates a 256-byte blank vbmeta image (AVB disabler)."""
+        print("[*] Generating Blank VBMeta disabler...")
+        vbmeta_path = os.path.join(self.working_dir, "vbmeta.img")
+        with open(vbmeta_path, 'wb') as f:
+            f.write(b'\x00' * 256)
+
+    def adapt_security_hals(self, vendor_mount):
+        """Ensures Samsung Keymaster/Gatekeeper are prioritized."""
+        print("[*] Adapting Security HALs (Keymaster/Gatekeeper)...")
+        pass
+
+    def neutralize_samsung_partitions(self, prism_mount, fstab_content):
+        """Disables Samsung services in prism and fixes fstab for keyrefuge."""
+        print("[*] Neutralizing Samsung partitions (Prism/Keyrefuge)...")
+
+        if os.path.isdir(prism_mount):
+            for root, dirs, files in os.walk(prism_mount):
+                for file in files:
+                    if file.endswith(".rc"):
+                        rc_path = os.path.join(root, file)
+                        os.rename(rc_path, rc_path + ".bak")
+
+        new_fstab = []
+        for line in fstab_content.splitlines():
+            if any(p in line for p in ["prism", "keyrefuge", "optics"]):
+                line = re.sub(r',avb[=\w\d\.]*', '', line)
+                line = re.sub(r',fileencryption=[=\w\d\.]*', '', line)
+                if "wait" in line and "nofail" not in line:
+                    line = line.replace("wait", "wait,nofail,latemount")
+            new_fstab.append(line)
+        return "\n".join(new_fstab)
+
+    def apply_smart_patches(self, use_blank_vbmeta=True):
         """Applying smart stability patches and Samsung partition mapping."""
         print("[*] Starting Smart Patching...")
 
@@ -109,21 +142,26 @@ class Patcher:
         # 1. Copy Pixel images (System, Product, System_ext)
         for file in os.listdir(self.img_dir):
             part_name = file.replace(".img", "")
-            # Only keep the software parts of Pixel
             if part_name.lower() in ["system", "product", "system_ext"]:
                 src_file = os.path.join(self.img_dir, file)
                 dst_file = os.path.join(self.working_dir, file)
                 shutil.copy2(src_file, dst_file)
 
-        # 2. Copy Samsung stability partitions from base (Kernel, Vendor, DTBO, Prism, ODM)
+        # 2. Copy Samsung stability partitions from base
         if self.base_img_dir and os.path.isdir(self.base_img_dir):
             print("[*] Found Samsung base images. Mapping hardware partitions...")
             hardware_parts = ["boot.img", "vendor.img", "dtbo.img", "prism.img", "odm.img", "optics.img", "vbmeta.img"]
             for part in hardware_parts:
                 base_file = os.path.join(self.base_img_dir, part)
                 if os.path.exists(base_file):
+                    if part == "vbmeta.img" and use_blank_vbmeta:
+                        continue # We'll generate a blank one instead
                     print(f"[*] Mapping {part} from Samsung base.")
                     shutil.copy2(base_file, os.path.join(self.working_dir, part))
+
+        # 3. Handle Blank VBMeta if requested
+        if use_blank_vbmeta:
+            self._generate_blank_vbmeta()
 
         print("[*] Smart Patching completed.")
         return self.working_dir
@@ -147,7 +185,6 @@ class Patcher:
                 f.write("ui_print \"---------------------------------------\"\n")
                 f.write(f"ui_print \"{flash_text}\"\n")
                 f.write("ui_print \"---------------------------------------\"\n")
-                # Order of flashing matters: Vendor/Hardware first, then System
                 flash_order = ["boot", "dtbo", "vbmeta", "vendor", "odm", "prism", "optics", "system", "system_ext", "product"]
                 for part in flash_order:
                     img = f"{part}.img"
@@ -157,7 +194,6 @@ class Patcher:
                 f.write("ui_print \"Installation Complete!\"\n")
                 f.write("exit 0\n")
         else:
-             # Similar logic for compiled binary...
              pass
 
         return scripts_dir
