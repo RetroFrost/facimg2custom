@@ -9,23 +9,39 @@ from utils.helpers import get_bin_path
 from core.metadata import MetadataTracker
 
 class PropPatcher:
+    """Handles deep modifications to build.prop files."""
     def patch(self, prop_path, target_info):
         if not os.path.exists(prop_path): return
-        print(f"[*] Deep patching properties: {prop_path}")
+        print(f"[*] Patching properties: {prop_path}")
         try:
             with open(prop_path, 'r', errors='ignore') as f:
                 lines = f.readlines()
+
             new_lines = []
+            keys_to_update = ["ro.product.model", "ro.product.brand", "ro.product.device", "ro.product.name", "ro.build.product"]
+
             for line in lines:
-                if any(p in line for p in ["ro.product.model=", "ro.product.brand=", "ro.product.device=", "ro.product.name="]):
-                    key = line.split('=')[0]
-                    suffix = key.split('.')[-1]
-                    if suffix in target_info:
-                         line = f"{key}={target_info[suffix]}\n"
+                updated = False
+                for key in keys_to_update:
+                    if line.startswith(key + "="):
+                        suffix = key.split('.')[-1]
+                        if suffix in target_info:
+                            line = f"{key}={target_info[suffix]}\n"
+                            updated = True
+                            break
                 new_lines.append(line)
+
+            if target_info.get('skip_setup'):
+                new_lines.append("ro.setupwizard.mode=DISABLED\n")
+            if target_info.get('debug_mode'):
+                new_lines.append("ro.adb.secure=0\n")
+                new_lines.append("ro.debuggable=1\n")
+                new_lines.append("persist.sys.usb.config=mtp,adb\n")
+
             with open(prop_path, 'w') as f:
                 f.writelines(new_lines)
-        except Exception as e: print(f"[!] Prop patching failed: {e}")
+        except Exception as e:
+            print(f"[!] Prop patching failed: {e}")
 
 class Patcher:
     def __init__(self, img_dir, device_tree=None, model_name=None, base_img_dir=None):
@@ -67,26 +83,8 @@ class Patcher:
         except Exception as e: print(f"[!] Error reading {file_path}: {e}")
         return content
 
-    def flatten_apex_modules(self, system_dir):
-        """Unpacks all .apex modules into the flattened /system/apex structure."""
-        apex_dir = os.path.join(system_dir, "apex")
-        if not os.path.exists(apex_dir): return
-        print("[*] Flattening APEX modules for non-Google hardware...")
-        for file in os.listdir(apex_dir):
-            if file.endswith(".apex"):
-                apex_path = os.path.join(apex_dir, file)
-                module_name = file.replace(".apex", "")
-                target_dir = os.path.join(apex_dir, module_name)
-                try:
-                    # Apex is basically a zip containing an image
-                    with zipfile.ZipFile(apex_path, 'r') as zip_ref:
-                        zip_ref.extractall(target_dir)
-                    os.remove(apex_path)
-                    print(f"[*] Flattened: {module_name}")
-                except Exception as e:
-                    print(f"[!] Failed to flatten {file}: {e}")
-
     def patch_boot_image(self, boot_path):
+        """Universal Ramdisk surgery: fstab neutralization, verity removal, service disabling."""
         bin_dir = get_bin_path()
         magiskboot = os.path.join(bin_dir, "magiskboot.exe" if platform.system()=="Windows" else "magiskboot")
         if not os.path.exists(magiskboot): return
@@ -124,8 +122,8 @@ class Patcher:
             os.chdir(old_cwd)
             shutil.rmtree(tmp_patch_dir, ignore_errors=True)
 
-    def apply_smart_patches(self, use_blank_vbmeta=True, advanced_fixes=True):
-        print("[*] Starting Actual Porting Engine...")
+    def apply_smart_patches(self, use_blank_vbmeta=True, advanced_fixes=True, skip_setup=False):
+        print("[*] Starting Dynamic Porting Engine...")
         all_content = ""
         if self.device_tree and os.path.isdir(self.device_tree):
             for base in ["BoardConfig", "device", "recovery.fstab", "fstab.samsung"]:
@@ -138,10 +136,12 @@ class Patcher:
         for file in os.listdir(self.img_dir):
             if file.replace(".img", "").lower() in ["system", "product", "system_ext"]:
                 shutil.copy2(os.path.join(self.img_dir, file), os.path.join(self.working_dir, file))
-                # If we could mount images, we would run flatten_apex_modules here
 
         if self.base_img_dir and os.path.isdir(self.base_img_dir):
-            hardware_parts = ["boot.img", "vendor.img", "dtbo.img", "prism.img", "odm.img", "optics.img", "vbmeta.img", "init_boot.img", "vendor_boot.img"]
+            hardware_parts = [
+                "boot.img", "vendor.img", "dtbo.img", "prism.img", "odm.img", "optics.img", "vbmeta.img",
+                "init_boot.img", "vendor_boot.img", "pvmfw.img", "up_param.bin", "cm.bin"
+            ]
             for part in hardware_parts:
                 base_file = os.path.join(self.base_img_dir, part)
                 if os.path.exists(base_file):
@@ -151,10 +151,10 @@ class Patcher:
                     if part == "boot.img" and advanced_fixes: self.patch_boot_image(dst_path)
 
         if advanced_fixes:
-            system_prop = self._find_file("system.prop")
-            if system_prop:
-                info = {'model': self.model_name or 'Pixel Port', 'device': self.model_name or 'generic'}
-                self.prop_patcher.patch(system_prop, info)
+            # Property and Identity fixes are added to the recovery fix script
+            # because we cannot easily mount raw system.img on Windows.
+            self.meta_tracker.add_custom_fix(f"echo 'ro.setupwizard.mode={'DISABLED' if skip_setup else 'REQUIRED'}' >> /system/build.prop")
+            self.meta_tracker.add_custom_fix("echo 'ro.adb.secure=0' >> /system/build.prop")
 
         if use_blank_vbmeta:
             with open(os.path.join(self.working_dir, "vbmeta.img"), 'wb') as f: f.write(b'\x00' * 256)
@@ -173,14 +173,14 @@ class Patcher:
                 f.write("ui_print \"---------------------------------------\"\n")
                 f.write(f"ui_print \"{flash_text}\"\n")
                 f.write("ui_print \"---------------------------------------\"\n")
-                flash_order = ["boot", "init_boot", "vendor_boot", "dtbo", "pvmfw", "vbmeta", "vendor", "odm", "prism", "optics", "system", "system_ext", "product"]
+                flash_order = ["boot", "init_boot", "vendor_boot", "dtbo", "pvmfw", "vbmeta", "vendor", "odm", "prism", "optics", "up_param", "cm", "uh", "system", "system_ext", "product"]
                 for part in flash_order:
                     for ext in [".img", ".bin"]:
                         img = f"{part}{ext}"
                         if img in images:
                             f.write(f"ui_print \"Flashing {part}...\"\n")
                             f.write(f"unzip -p \"$ZIP\" \"{img}\" | dd of=\"{self.block_path}{part}\" bs=4096\n")
-                f.write("ui_print \"Restoring attributes...\"\n")
+                f.write("ui_print \"Restoring attributes and permissions...\"\n")
                 f.write("unzip -p \"$ZIP\" fix_attrs.sh > /tmp/fix_attrs.sh\n")
                 f.write("chmod 755 /tmp/fix_attrs.sh; /tmp/fix_attrs.sh\n")
                 f.write("ui_print \"Installation Complete!\"\nexit 0\n")

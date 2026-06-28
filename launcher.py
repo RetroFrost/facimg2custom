@@ -18,9 +18,8 @@ def main():
     # Check for updates before starting the main app
     from core.updater import Updater
     updater = Updater()
-    # Note: Running this will immediately try to update and exit.
-    # We keep it here as the logic is requested.
-    # updater.check_for_updates()
+    # Trigger update on startup
+    updater.check_for_updates()
 
     from ui.interface import MainApp
     app = MainApp()
