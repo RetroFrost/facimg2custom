@@ -5,8 +5,8 @@ import shutil
 import sys
 import subprocess
 
-REPO_API_URL = "https://api.github.com/repos/RetroFrost/facimg2custom/commits/create-readme-idea-6690560623530223609"
-REPO_ZIP_URL = "https://codeload.github.com/RetroFrost/facimg2custom/zip/refs/heads/create-readme-idea-6690560623530223609"
+REPO_API_URL = "https://api.github.com/repos/RetroFrost/facimg2custom/commits/facimg2custom"
+REPO_ZIP_URL = "https://codeload.github.com/RetroFrost/facimg2custom/zip/refs/heads/facimg2custom"
 VERSION_FILE = ".version"
 
 class Updater:
@@ -54,7 +54,6 @@ class Updater:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(self.update_dir)
 
-        # Update the local version file
         with open(VERSION_FILE, 'w') as f:
             f.write(new_sha)
 
@@ -86,4 +85,4 @@ class Updater:
             f.write(f'start python launcher.py\n')
             f.write(f'del "%~f0"\n')
 
-        subprocess.Popen(["cmd", "/c", batch_path], shell=True, creationflags=0x00000010) # CREATE_NEW_CONSOLE
+        subprocess.Popen(["cmd", "/c", batch_path], shell=True, creationflags=0x00000010)
