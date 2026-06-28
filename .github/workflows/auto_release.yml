@@ -15,16 +15,41 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Get short SHA
+      - name: Get next version
         id: vars
-        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: |
+          # Fetch all tags
+          git fetch --tags
+
+          # Get the latest tag matching the pattern v*
+          LATEST_TAG=$(git tag -l "v*" --sort=-v:refname | head -n 1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            # If no tags exist, start at v2.0
+            NEXT_TAG="v2.0"
+          else
+            # Extract major and minor version
+            # Assuming tag format is vX.Y
+            VERSION_STR=${LATEST_TAG#v}
+            MAJOR=${VERSION_STR%.*}
+            MINOR=${VERSION_STR#*.}
+
+            # Increment minor version
+            NEXT_MINOR=$((MINOR + 1))
+            NEXT_TAG="v$MAJOR.$NEXT_MINOR"
+          fi
+
+          echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
+          echo "Next version: $NEXT_TAG"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.vars.outputs.sha_short }}
-          name: Release ${{ steps.vars.outputs.sha_short }}
+          tag_name: ${{ steps.vars.outputs.next_tag }}
+          name: Release ${{ steps.vars.outputs.next_tag }}
           body: |
             Automated release for commit ${{ github.sha }}
 
