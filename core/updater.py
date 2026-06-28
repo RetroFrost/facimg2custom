@@ -5,8 +5,8 @@ import shutil
 import sys
 import subprocess
 
-REPO_API_URL = "https://api.github.com/repos/RetroFrost/facimg2custom/commits/main"
-REPO_ZIP_URL = "https://github.com/RetroFrost/facimg2custom/zipball/HEAD"
+REPO_API_URL = "https://api.github.com/repos/RetroFrost/facimg2custom/commits/create-readme-idea-6690560623530223609"
+REPO_ZIP_URL = "https://github.com/RetroFrost/facimg2custom/zipball/create-readme-idea-6690560623530223609"
 VERSION_FILE = ".version"
 
 class Updater:
