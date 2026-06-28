@@ -115,9 +115,12 @@ class Patcher:
                         with open(f_path, 'r') as f: content = f.read()
                         content = re.sub(r'(service\s+(?:vaultkeeper|sced|secure_storage|sec_gnss|gatekeeper|keymaster).*)', r'# \1', content)
                         with open(f_path, 'w') as f: f.write(content)
-            subprocess.run([magiskboot, "repack", "boot.img", "new-boot.img"], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
+            subprocess.run([magiskboot, "repack", "boot.img", "new-boot.img"], check=True, capture_output=True, text=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
             shutil.move("new-boot.img", boot_path)
-        except Exception as e: print(f"[!] Ramdisk surgery failed: {e}")
+        except subprocess.CalledProcessError as e:
+            print(f"[!] Magiskboot failed (code {e.returncode}):\nSTDOUT: {e.stdout}\nSTDERR: {e.stderr}")
+        except Exception as e:
+            print(f"[!] Ramdisk surgery failed: {e}")
         finally:
             os.chdir(old_cwd)
             shutil.rmtree(tmp_patch_dir, ignore_errors=True)

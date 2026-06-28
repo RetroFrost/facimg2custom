@@ -7,14 +7,23 @@ import shutil
 
 # Verified URLs for Windows binaries
 SIMG2IMG_WIN_URL = "https://github.com/KinglyWayne/simg2img_win/archive/refs/heads/master.zip"
-MAGISKBOOT_URL = "https://release-assets.githubusercontent.com/github-production-release-asset/582276154/1d0b84a2-262b-484b-bd5a-65fbdd3f0ac1?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-06-27T22%3A38%3A44Z&rscd=attachment%3B+filename%3Dmagiskboot.exe&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-06-27T21%3A37%3A55Z&ske=2026-06-27T22%3A38%3A44Z&sks=b&skv=2018-11-09&sig=R9U39%2FeuGn%2FNT49W%2Fca2tPRfARbujDZ971GckfBFjV8%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4MjU5Njc4NywibmJmIjoxNzgyNTk2NDg3LCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.XKccWluD_iZu_aAL-r2u7TcZlHXp0NbQkr11X27LzqI&response-content-disposition=attachment%3B%20filename%3Dmagiskboot.exe&response-content-type=application%2Foctet-stream"
+MAGISKBOOT_URL = "https://github.com/PinNaCode/magiskboot_build/releases/download/last-ci/magiskboot-e159716-release-windows-mingw-w64-ucrt-x86_64-standalone.zip"
 LZ4_WIN_ZIP_URL = "https://github.com/lz4/lz4/releases/download/v1.10.0/lz4_win64_v1_10_0.zip"
-LPUNPACK_URL = "https://release-assets.githubusercontent.com/github-production-release-asset/540011318/248e0801-4c9b-4fe6-ba8c-8274c3ecdd46?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-06-27T22%3A33%3A18Z&rscd=attachment%3B+filename%3Dlpunpack.exe&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-06-27T21%3A33%3A02Z&ske=2026-06-27T22%3A33%3A18Z&sks=b&skv=2018-11-09&sig=GfqLzuX22nTmFv6su7NkRbmMQdwiBGkkYfpPnf5a0x4%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc4MjU5NjMxMCwibmJmIjoxNzgyNTk2MDEwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.k3_nBs6AI_FyCQ9hr6MOiX2SkqlX9kZPhJMLCaVmPS8&response-content-disposition=attachment%3B%20filename%3Dlpunpack.exe&response-content-type=application%2Foctet-stream"
-CYGWIN_DLL_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/releases/download/cmake/cygwin1.dll"
+LPUNPACK_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/releases/download/220922/lpunpack.exe"
+CYGWIN_DLL_URL = "https://github.com/thka2016/lpunpack_and_lpmake_cmake/releases/download/220922/cygwin1.dll"
 
 class Downloader:
     def __init__(self, bin_dir):
         self.bin_dir = bin_dir
+
+    def verify_binary(self, filepath):
+        """Verifies that the file is a valid Windows executable."""
+        if not os.path.exists(filepath): return False
+        try:
+            with open(filepath, 'rb') as f:
+                header = f.read(2)
+                return header == b'MZ'
+        except: return False
 
     def download_file(self, url, target_name):
         """Downloads a single file directly."""
@@ -94,17 +103,17 @@ class Downloader:
                     success = False
 
             # magiskboot
-            if not os.path.exists(os.path.join(self.bin_dir, "magiskboot.exe")):
-                 if not self.download_file(MAGISKBOOT_URL, "magiskboot.exe"):
+            if not self.verify_binary(os.path.join(self.bin_dir, "magiskboot.exe")):
+                 if not self.download_dependency(MAGISKBOOT_URL, "magiskboot_zip"):
                      success = False
 
             # lz4
-            if not os.path.exists(os.path.join(self.bin_dir, "lz4.exe")):
+            if not self.verify_binary(os.path.join(self.bin_dir, "lz4.exe")):
                 if not self.download_dependency(LZ4_WIN_ZIP_URL, "lz4_zip"):
                     success = False
 
             # lpunpack
-            if not os.path.exists(os.path.join(self.bin_dir, "lpunpack.exe")):
+            if not self.verify_binary(os.path.join(self.bin_dir, "lpunpack.exe")):
                 if not self.download_file(LPUNPACK_URL, "lpunpack.exe"):
                     success = False
 
