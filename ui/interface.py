@@ -14,7 +14,7 @@ class MainApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("facimg2custom - Rufus for Pixel Ports")
-        self.root.geometry("500x800")
+        self.root.geometry("500x750")
         self.root.resizable(False, False)
 
         self.pixel_img_path = tk.StringVar()
