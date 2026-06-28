@@ -6,7 +6,7 @@ import sys
 import subprocess
 
 REPO_API_URL = "https://api.github.com/repos/RetroFrost/facimg2custom/commits/main"
-REPO_ZIP_URL = "https://codeload.github.com/RetroFrost/facimg2custom/zip/refs/heads/main"
+REPO_ZIP_URL = "https://github.com/RetroFrost/facimg2custom/zipball/HEAD"
 VERSION_FILE = ".version"
 
 class Updater:
