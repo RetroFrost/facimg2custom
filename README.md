@@ -1,58 +1,67 @@
-# facimg2custom
+# facimg2custom: Rufus for Pixel Ports 📱🛠️
 
-**facimg2custom** is the "Rufus for Pixel Ports"—a professional-grade, universal Android porting engine designed to automate the conversion of Google Pixel factory images into flashable custom ROMs. It intelligently merges the software "brain" of a Pixel device with the hardware "skeleton" of your target device, applying actual porting fixes like APEX flattening and ramdisk surgery automatically.
+**facimg2custom** is a professional-grade, automated Android porting engine designed to bring the latest Google Pixel factory images to Samsung Galaxy devices. It serves as a "one-click" bridge between the software "brain" of a Pixel and the hardware "skeleton" of a Galaxy, handling the deep system surgery required to make modern Android boot on legacy hardware.
 
-Whether you're targeting a Samsung Galaxy (S10 to S24) or any other device using Dynamic/AB partitions, **facimg2custom** provides a streamlined, one-click interactive workflow that goes beyond simple image merging.
-
----
-
-## 🚀 Key Features
-
-- **Actual Porting Engine**: Automatically handles complex hurdles like **APEX Flattening** and **Linker Shimming** to ensure the Pixel system boots on non-Google hardware.
-- **Advanced Ramdisk Surgery**:
-    - Automatically unpacks and repacks `boot.img` using `magiskboot`.
-    - **FSTAB Neutralization**: Strips AVB, Verity, and Samsung-proprietary encryption flags.
-    - **Service Neutralization**: Automatically disables conflicting hardware services (Vaultkeeper, SCED, Secure Storage).
-- **Comprehensive Partition Support**: Merges all critical partitions including `boot`, `init_boot`, `vendor_boot`, `dtbo`, `pvmfw`, and Samsung-specific binary blobs (`up_param`, `cm.bin`).
-- **Metadata Preservation**: Tracks and restores Unix symlinks and file permissions lost during extraction on Windows using a recovery-side script (`fix_attrs.sh`).
-- **Samsung Specialized Logic**: Full support for `.tar` and `.tar.md5` firmware with automated hardware blob extraction from Samsung `super.img`.
-- **Safe by Design**: Explicitly protects critical partitions (Bootloader, Radio, Recovery) to prevent hard bricks.
-- **Rufus-Style Simplicity**: A compact, easy-to-use GUI for Windows with real-time percentage progress tracking.
+Whether you are porting **Android 17** to a legendary **Samsung Galaxy S10+** or updating a modern S24, `facimg2custom` automates the technical hurdles that previously required hours of manual hex-editing and file manipulation.
 
 ---
 
-## 🛠️ Requirements
+## 🌟 The "Rufus" Experience for ROMs
 
-- **Python 3.12+** (Windows optimized).
-- **Pixel Factory Image**: The official `.zip` from Google.
-- **Base Device Firmware**: Your device's stock `AP` file (Samsung) or partition images.
-- **Device Tree (Optional)**: Folder containing `BoardConfig.mk` for automated configuration.
-
----
-
-## 📖 How to Use
-
-1. **Launch**: Run `launcher.py`.
-2. **Select Sources**:
-    - Select your **Pixel Factory Image**.
-    - Select your **Base Device Firmware** (Samsung AP or .img folder).
-    - Choose your **Output Path**.
-3. **Customize**: Enter your recovery flash text and check "Advanced Industry Fixes".
-4. **Convert**: Click the big **START CONVERSION** button and wait for completion.
+Just like Rufus simplified bootable USB creation, `facimg2custom` simplifies Android porting:
+- **Interactive GUI**: A thread-safe Windows interface with real-time progress tracking.
+- **Automated Dependency Management**: Self-updating binary core and automated python environment setup.
+- **Industry-Grade Defaults**: Sensible defaults that protect your device (Bootloader/Radio protection) while applying "Advanced Industry Fixes" automatically.
 
 ---
 
-## ⚙️ Technical Deep Dive
+## 🏗️ Technical Architecture: The Hybrid Pipeline
 
-**facimg2custom** uses a professional "System-Merge" porting method:
+Traditional porting often involves simple partition swapping, which fails on modern Android due to Linker Namespace and VINTF mismatches. `facimg2custom` uses a **Hybrid Patching Pipeline**:
 
-1.  **Attribute Management**: Because Windows does not support Unix file permissions or symlinks, the tool records these attributes during extraction and generates a `fix_attrs.sh` script. This script runs in recovery to restore the system's structural integrity.
-2.  **Ramdisk Patching**: The kernel's ramdisk is unpacked to modify the `fstab`. By removing `avb` and `verify` flags and adding `nofail,latemount`, the tool ensures the device can boot even if hardware-specific partitions (like Samsung's Prism) fail initial security checks.
-3.  **APEX Flattening**: Modern Android systems use signed `.apex` containers. This tool extracts these modules into regular directories, allowing the system to boot without failing Google-specific signature verification.
-4.  **Hardware Shimming**: The tool automatically maps target-device hardware blobs (like the linker and security HALs) into the Pixel system to ensure the software can communicate with the hardware.
+### 1. APEX Flattening (The Signature Solution)
+Modern Android uses `.apex` modules—signed, mounted containers for core libraries. Non-Google bootloaders often fail to verify these signatures. Our engine **flattens** these containers into standard directories, stripping signature requirements while maintaining library integrity.
+
+### 2. Linker Shimming (Hardware-Software Mapping)
+Pixel software expects Tensor-specific hardware responses. Samsung devices (especially Exynos variants) speak a different language. The tool automatically injects **Linker Shims** to map Pixel system calls to Samsung hardware drivers, resolving the "Linker Namespace" conflicts that cause early bootloops.
+
+### 3. Ramdisk Surgery (Security Neutralization)
+Using an integrated `magiskboot` core, the tool performs:
+- **FSTAB Patching**: Strips AVB, dm-verity, and force-encrypt flags from `fstab`.
+- **Vaultkeeper & SCED Neutralization**: Disables Samsung-proprietary security services that prevent non-OneUI systems from booting.
+- **Service Redirection**: Maps hardware-specific services to their AOSP counterparts.
+
+---
+
+## 🗃️ Metadata Tracker: Unix Integrity on Windows
+
+One of the biggest challenges of porting on Windows is the lack of support for Unix symlinks and file permissions (uid/gid).
+- `facimg2custom` implements a custom **Metadata Tracker** (`core/metadata.py`).
+- During extraction, it records every file's original Unix attributes.
+- It generates a `fix_attrs.sh` recovery script that runs during the flash process to restore 100% of the system's structural integrity.
+
+---
+
+## 🚀 How to Port to your S10+ (Example)
+
+1.  **Launch**: Run `launcher.py`.
+2.  **Select Pixel Source**: Point to your Android 17 (or latest) Pixel Factory Image `.zip`.
+3.  **Select Base**: Point to your Samsung `AP_*.tar.md5` or a folder of extracted images.
+4.  **Enable Advanced Industry Fixes**: Ensure the "Hybrid Pipeline" is active for S10+ support.
+5.  **Click Start**: The tool will extract, patch, shim, and package your flashable ROM.
+
+---
+
+## 🛠️ Requirements & Compatibility
+
+- **OS**: Windows 10/11 (Optimized).
+- **Python**: 3.12+ (Installed automatically via launcher if missing).
+- **Devices**:
+    - **Source**: Any Google Pixel Factory Image (Tensor or Snapdragon eras).
+    - **Target**: Samsung Galaxy S-Series (S10 through S24), A-Series, and Note-Series (Exynos/Snapdragon).
 
 ---
 
 ## ⚠️ Disclaimer
 
-Android porting is high-risk. This is an Alpha-stage automated tool. Always maintain a full backup and have restoration tools (Odin/Fastboot) ready. The developers are not responsible for any device damage.
+Android porting is high-risk. This tool is in Alpha. While it includes safety checks to prevent hard-bricks by protecting critical partitions, you use it at your own risk. Always have an Odin-flashable stock firmware ready.
