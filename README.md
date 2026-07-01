@@ -9,7 +9,7 @@ Whether you are porting **Android 17** to a legendary **Samsung Galaxy S10+** or
 ## 🌟 The "Rufus" Experience for ROMs
 
 Just like Rufus simplified bootable USB creation, `facimg2custom` simplifies Android porting:
-- **Interactive GUI**: A thread-safe Windows interface with real-time progress tracking.
+- **Cross-Platform GUI**: A thread-safe interface with real-time progress tracking, optimized for **Windows** and **Linux**.
 - **Automated Dependency Management**: Self-updating binary core and automated python environment setup.
 - **Industry-Grade Defaults**: Sensible defaults that protect your device (Bootloader/Radio protection) while applying "Advanced Industry Fixes" automatically.
 
@@ -35,10 +35,10 @@ Using an integrated `magiskboot` core, the tool performs:
 
 ## 🗃️ Metadata Tracker: Unix Integrity on Windows
 
-One of the biggest challenges of porting on Windows is the lack of support for Unix symlinks and file permissions (uid/gid).
+While Linux users benefit from native Unix filesystem support, porting on Windows often results in the loss of symlinks and file permissions (uid/gid).
 - `facimg2custom` implements a custom **Metadata Tracker** (`core/metadata.py`).
 - During extraction, it records every file's original Unix attributes.
-- It generates a `fix_attrs.sh` recovery script that runs during the flash process to restore 100% of the system's structural integrity.
+- It generates a `fix_attrs.sh` recovery script that runs during the flash process to restore 100% of the system's structural integrity on the target device.
 
 ---
 
@@ -54,8 +54,9 @@ One of the biggest challenges of porting on Windows is the lack of support for U
 
 ## 🛠️ Requirements & Compatibility
 
-- **OS**: Windows 10/11 (Optimized).
-- **Python**: 3.12+ (Installed automatically via launcher if missing).
+- **OS**: Windows 10/11 or modern Linux distributions (Ubuntu, Fedora, etc.).
+- **Python**: 3.12+ (Installed automatically via launcher if missing on Windows).
+- **Linux Dependencies**: `android-sdk-libsparse-utils`, `lz4`, and `tar`.
 - **Devices**:
     - **Source**: Any Google Pixel Factory Image (Tensor or Snapdragon eras).
     - **Target**: Samsung Galaxy S-Series (S10 through S24), A-Series, and Note-Series (Exynos/Snapdragon).

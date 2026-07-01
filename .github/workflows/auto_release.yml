@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - create-readme-idea-6690560623530223609
 
 permissions:
   contents: write

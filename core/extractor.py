@@ -114,6 +114,8 @@ class Extractor:
         bin_dir = get_bin_path()
         binary_name = "lz4.exe" if platform.system() == "Windows" else "lz4"
         lz4_bin = os.path.join(bin_dir, binary_name)
+        if not os.path.exists(lz4_bin):
+            lz4_bin = shutil.which("lz4") or "lz4"
         out_path = lz4_path.replace(".lz4", "")
         print(f"[*] Decompressing {lz4_path}...")
         try:
@@ -127,7 +129,11 @@ class Extractor:
         bin_dir = get_bin_path()
         binary_name = "lpunpack.exe" if platform.system() == "Windows" else "lpunpack"
         lpunpack_bin = os.path.join(bin_dir, binary_name)
-        if not os.path.exists(lpunpack_bin): return
+        if not os.path.exists(lpunpack_bin):
+            lpunpack_bin = shutil.which("lpunpack") or "lpunpack"
+            if not shutil.which("lpunpack") and not os.path.exists(os.path.join(bin_dir, "lpunpack")):
+                 print("[!] lpunpack not found, skipping super.img unpack.")
+                 return
         print(f"[*] Unpacking super.img into {output_dir}...")
         try:
             subprocess.run([lpunpack_bin, super_path, output_dir], check=True, creationflags=0x08000000 if platform.system()=="Windows" else 0)
@@ -138,7 +144,10 @@ class Extractor:
         bin_dir = get_bin_path()
         binary_name = "simg2img.exe" if platform.system() == "Windows" else "simg2img"
         simg2img = os.path.join(bin_dir, binary_name)
-        if not os.path.exists(simg2img): return
+        if not os.path.exists(simg2img):
+            simg2img = shutil.which("simg2img") or "simg2img"
+            if not shutil.which("simg2img") and not os.path.exists(os.path.join(bin_dir, "simg2img")):
+                return
         for file in os.listdir(img_dir):
             if file.endswith(".img") and file in ["system.img", "vendor.img", "product.img", "system_ext.img"]:
                 input_img = os.path.join(img_dir, file)
